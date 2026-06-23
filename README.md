@@ -1,6 +1,6 @@
 ### QueueForge
 
-> A cloud-native asynchronous report generation platform built with Go, PostgreSQL, Amazon SQS, and Amazon S3.
+A cloud-native asynchronous report generation API built with Go, PostgreSQL, Amazon SQS, and Amazon S3.
 
 QueueForge is a scalable backend service designed to handle long-running report generation tasks without blocking client requests. The system leverages a message-driven architecture where report jobs are queued in Amazon SQS and processed asynchronously by worker services.
 
@@ -24,4 +24,6 @@ When a user requests a report:
 
 ---
 
-Built with Go, AWS, and distributed systems principles.
+### Architecture:
+
+![Architecture](architecture.png)
