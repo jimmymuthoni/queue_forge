@@ -3,13 +3,23 @@ services:
     image: postgres:17
     restart: always
     environment:
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
     ports:
       - "${DATABASE_PORT}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data 
- 
+      - pgdata:/var/lib/postgresql/data
+
+  test_db:
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "${DATABASE_TEST_PORT}:5432"
+
 volumes:
   pgdata:
