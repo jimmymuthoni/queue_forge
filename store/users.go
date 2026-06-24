@@ -58,6 +58,27 @@ func (s *UserStore) CreateUser(ctx context.Context, email, password string) (*Us
 		return nil, fmt.Errorf("Failed to insert the user")
 	}
 	return &user, nil
+}
 
+//finding user by email
+func (s *UserStore) FindUserByEmail(ctx context.Context, userEmail string) (*User, error){
+	const query = "SELECT * FROM users WHERE email=$1;"
+	var user User
+
+	if err := s.db.GetContext(ctx, &user, query, userEmail); err != nil {
+		return nil, fmt.Errorf("Failed to fetch the user: %w", err)
+	}
+	return &user, nil
+}
+
+//finding user by id
+func (s *UserStore) FindUserById(ctx context.Context, userId uuid.UUID) (*User, error){
+	const query = "SELECT * FROM users WHERE id=$1;"
+	var user User
+
+	if err := s.db.GetContext(ctx, &user, query, userId); err != nil {
+		return nil, fmt.Errorf("Failed to fetch the user by Id %s: %w", userId, err)
+	}
+	return &user, nil
 }
 
