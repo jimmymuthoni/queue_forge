@@ -16,7 +16,7 @@ import (
 type User struct {
 	Id                   uuid.UUID `db:"id"`
 	Email                string    `db:"email"`
-	HashedPasswordBase64 string    `db:"HashedPassword"`
+	HashedPasswordBase64 string    `db:"hashed_password"`
 	CreatedAt 			 time.Time `db:"created_at"`
 }
 
@@ -36,6 +36,7 @@ type UserStore struct {
 	db *sqlx.DB
 }
 
+//conveting sql.Db to sqlx
 func NewUserStore(db *sql.DB) *UserStore {
 	return &UserStore{
 		db: sqlx.NewDb(db, "postgres"),
@@ -57,5 +58,6 @@ func (s *UserStore) CreateUser(ctx context.Context, email, password string) (*Us
 		return nil, fmt.Errorf("Failed to insert the user")
 	}
 	return &user, nil
+
 }
 
