@@ -20,6 +20,18 @@ type User struct {
 	CreatedAt 			 time.Time `db:"created_at"`
 }
 
+func (u *User) ComparePassword(password string) error {
+	hashedPassword, err := base64.StdEncoding.DecodeString(u.HashedPasswordBase64)
+	if err != nil {
+		return err
+	}
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
+	if err != nil{
+		return fmt.Errorf("invalid password")
+	}
+	return nil
+}
+
 type UserStore struct {
 	db *sqlx.DB
 }
