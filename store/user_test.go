@@ -1,45 +1,50 @@
-package store
+package store_test
 
 import (
 	"context"
-	"os"
 	"testing"
+	"time"
 
-	migrate "github.com/golang-migrate/migrate/v4"
-    _ "github.com/golang-migrate/migrate/v4/database/postgres"
-    _ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jimmymuthoni/queue_forge/config"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jimmymuthoni/queue_forge/fixtures"
 	"github.com/stretchr/testify/require"
+	"github.com/jimmymuthoni/queue_forge/store"
 )
 
 func TestUserStore(t *testing.T){
-	os.Setenv("ENV", string(config.Env_Test))
-	
 
-	conf, err := config.New()
-	require.NoError(t, err)
-	
+	env := fixtures.NewTestEnv(t)
+	env.SetUpDb(t)
+	cleanup := env.SetUpDb(t)
+	t.Cleanup(func() {
+		cleanup(t)
+	})
 
-	db, err := NewPostgresDb(conf)
-	require.NoError(t, err)
-	defer db.Close()
-
-	//migations to the test_db
-	m, err := migrate.New(
-		"file://../migrations",
-		conf.DatabaseUrl())
-	require.NoError(t, err)
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		require.NoError(t, err)
-	}
-
-	userStore := NewUserStore(db)
+	now := time.Now()
+	ctx := context.Background()
+	userStore := store.NewUserStore(env.Db)
 	user, err := userStore.CreateUser(context.Background(), "jim@testingmail.com", "testingpassword")
 	require.NoError(t, err)
 
 	require.Equal(t, "jim@testingmail.com", user.Email)
 	require.NoError(t, user.ComparePassword("testingpassword"))
+	require.Less(t, now.UnixNano(), user.CreatedAt.UnixNano())
 
+	//teting fnding user byid
+	user2, err := userStore.FindUserById(ctx, user.Id)
+	require.NoError(t, err)
+	require.Equal(t, user.Email, user2.Email)
+	require.Equal(t, user.Id, user2.Id)
+	require.Equal(t, user.HashedPasswordBase64, user2.HashedPasswordBase64)
+	require.Equal(t, user.CreatedAt.UnixNano(), user2.CreatedAt.UnixNano())
+
+	//testing finding user by email
+	user2, err = userStore.FindUserByEmail(ctx, user.Email)
+	require.NoError(t, err)
+	require.Equal(t, user.Email, user2.Email)
+	require.Equal(t, user.Id, user2.Id)
+	require.Equal(t, user.HashedPasswordBase64, user2.HashedPasswordBase64)
+	require.Equal(t, user.CreatedAt.UnixNano(), user2.CreatedAt.UnixNano())
 
 }
