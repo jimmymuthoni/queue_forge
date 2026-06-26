@@ -31,13 +31,16 @@ func (s *ApiServer) ping(w http.ResponseWriter, r *http.Request){
 }
 
 
-//this function starts the server
+//this function starts the server and logs all the request
 func (s *ApiServer) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", s.ping)
+
+	middleware := NewLoggerMiddleware(s.logger)
+
 	server := &http.Server{
 		Addr: net.JoinHostPort(s.config.ApiServerHost, s.config.ApiServerPort),
-		Handler: mux,
+		Handler: middleware(mux),
 	}
 
 	//goroutine to handle start logic of the server
