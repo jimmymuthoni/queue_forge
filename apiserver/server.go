@@ -3,18 +3,25 @@ package apiserver
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/jimmymuthoni/queue_forge/config"
 )
 
 type ApiServer struct {
-	Config *config.Config
+	config *config.Config
+	logger *slog.Logger
 
 }
 
-func New(config *config.Config) *ApiServer {
-	return &ApiServer{Config: config}
+func New(config *config.Config, logger *slog.Logger) *ApiServer {
+	return &ApiServer{
+		config: config,
+		logger: logger,
+	}
 }
 
 //this function ping to the server before starting
@@ -24,14 +31,38 @@ func (s *ApiServer) ping(w http.ResponseWriter, r *http.Request){
 }
 
 
-//this function stsrts the server
+//this function starts the server
 func (s *ApiServer) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ping", s.ping)
 	server := &http.Server{
-		Addr: ":5000",
+		Addr: net.JoinHostPort(s.config.ApiServerHost, s.config.ApiServerPort),
 		Handler: mux,
 	}
-	slog.Info("Starting server on 5000...")
-	return server.ListenAndServe()
+
+	//goroutine to handle start logic of the server
+	go func ()  {
+		slog.Info("Server running" ,"port", s.config.ApiServerPort)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Error("Api server failed to listen and serve", "error", err)
+		}
+	}()
+
+
+	//go rountine to handle the shutdown logic of the sever
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func ()  {
+		defer wg.Done()
+		<-ctx.Done()
+
+		shutDownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutDownCtx); err !=nil {
+			s.logger.Error("APiserver faile to shutdown", "error", err)
+		}
+	}()
+	wg.Wait()
+
+	return nil
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -23,8 +25,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	server := apiserver.New(conf)
-	server.Start(ctx)
+
+	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	logger := slog.New(jsonHandler)
+	server := apiserver.New(conf,logger)
 
 	if err := server.Start(ctx); err != nil {
 		return err
