@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/jimmymuthoni/queue_forge/config"
@@ -31,5 +32,6 @@ func (s *ApiServer) Start(ctx context.Context) error {
 		Addr: ":5000",
 		Handler: mux,
 	}
+	slog.Info("Starting server on 5000...")
 	return server.ListenAndServe()
 }
