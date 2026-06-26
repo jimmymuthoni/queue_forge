@@ -16,6 +16,8 @@ const (
 
 //struct to the environment varibles.
 type Config struct {
+	ApiServerPort	 string  `env:"APISERVER_PORT"`
+	ApiServerHost    string  `env:"APISERVER_HOST"`
 	DatabaseName     string  `env:"DATABASE_NAME"`
 	DatabaseHost     string  `env:"DATABASE_HOST"`
 	DatabaseUser     string  `env:"DATABASE_USER"`
