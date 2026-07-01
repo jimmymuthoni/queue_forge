@@ -9,18 +9,21 @@ import (
 	"time"
 
 	"github.com/jimmymuthoni/queue_forge/config"
+	"github.com/jimmymuthoni/queue_forge/store"
 )
 
 type ApiServer struct {
 	config *config.Config
 	logger *slog.Logger
+	store 	*store.Store
 
 }
 
-func New(config *config.Config, logger *slog.Logger) *ApiServer {
+func New(config *config.Config, logger *slog.Logger, store *store.Store) *ApiServer {
 	return &ApiServer{
 		config: config,
 		logger: logger,
+		store: store,
 	}
 }
 
