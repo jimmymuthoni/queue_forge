@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	"fmt"
+
 
 	"github.com/jimmymuthoni/queue_forge/config"
 	"github.com/jimmymuthoni/queue_forge/store"

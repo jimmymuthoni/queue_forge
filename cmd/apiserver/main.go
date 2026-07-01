@@ -10,6 +10,7 @@ import (
 
 	"github.com/jimmymuthoni/queue_forge/apiserver"
 	"github.com/jimmymuthoni/queue_forge/config"
+	"github.com/jimmymuthoni/queue_forge/store"
 )
 
 func main(){
@@ -28,7 +29,14 @@ func run() error {
 
 	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(jsonHandler)
-	server := apiserver.New(conf,logger)
+
+	db, err := store.NewPostgresDb(conf)
+	if err != nil {
+		return err
+	}
+	datastore := store.New(db)
+
+	server := apiserver.New(conf,logger, datastore)
 
 	if err := server.Start(ctx); err != nil {
 		return err
