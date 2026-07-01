@@ -14,3 +14,5 @@ func NewLoggerMiddleware(logger *slog.Logger) func(next http.Handler) http.Handl
 			})
 		}
 }
+
+//authentication middleware
