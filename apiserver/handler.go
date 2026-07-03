@@ -27,7 +27,7 @@ func (r SignUpRequest) Validate() error {
 
 //generic APIResponse can contain data to return from API
 type APIResponse[T any] struct{
-	Data    *T		`json:"data"`
+	Data    *T		`json:"data,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
