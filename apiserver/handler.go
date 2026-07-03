@@ -2,8 +2,8 @@ package apiserver
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 )
 
@@ -24,52 +24,49 @@ func (r SignUpRequest) Validate() error {
 
 }
 
-
 //generic APIResponse can contain data to return from API
 type APIResponse[T any] struct{
 	Data    *T		`json:"data,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
-//handler to handle signup of a user
-func (s *ApiServer) signupHandler(w http.ResponseWriter, r *http.Request){
-	var reg SignUpRequest
-	if err := json.NewDecoder(r.Body).Decode(&reg); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
+// handler to handle signup of a user
+func (s *ApiServer) signupHandler() http.HandlerFunc {
+	return handler(func(w http.ResponseWriter, r *http.Request) error {
 
-	if err := reg.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+		// decoding the incoming request
+		req, err := decode[SignUpRequest](r)
+		if err != nil {
+			return NewErrWithStatus(http.StatusBadRequest, err)
+		}
 
-	//getting existing user by email
-	existingUser, err := s.store.Users.FindUserByEmail(r.Context(), reg.Email)
+		// getting existing user by email
+		existingUser, err := s.store.Users.FindUserByEmail(r.Context(), req.Email)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return NewErrWithStatus(http.StatusBadRequest, err)
+		}
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-	}
-	if existingUser != nil {
-    http.Error(w, "user already exists", http.StatusBadRequest)
-    return
-	}
+		if existingUser != nil {
+			return NewErrWithStatus(http.StatusConflict, fmt.Errorf("email already registred"))
+		}
 
-	//creating user
-	_, err = s.store.Users.CreateUser(r.Context(), reg.Email, reg.Password)
-	if err != nil {
-		http.Error(w,err.Error(),http.StatusInternalServerError)
-		return
-	}
+		// creating user
+		_, err = s.store.Users.CreateUser(r.Context(), req.Email, req.Password)
+		if err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
 
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode (APIResponse[struct{}]{
-		Message: "Successfullly signup user",
-	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		// encoding API response
+		if err := encode(
+			APIResponse[struct{}]{
+				Message: "successfully signed up user",
+			},
+			http.StatusCreated,
+			w,
+		); err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
 
+		return nil
+	})
 }
