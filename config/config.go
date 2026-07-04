@@ -24,6 +24,7 @@ type Config struct {
 	DatabasePassword string  `env:"DATABASE_PASSWORD"`
 	DatabasePort	 string  `env:"DATABASE_PORT"`
 	DatabasePortTest string  `env:"DATABASE_TEST_PORT"`
+	JwtSecret		 string  `env:"JWT_SECRET"`
 	Env 			 Env     `env:"ENV" envDefault:"dev"`
 
 }
