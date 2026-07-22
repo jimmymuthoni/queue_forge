@@ -9,6 +9,8 @@ import (
 	"github.com/jimmymuthoni/queue_forge/config"
 )
 
+var siginingMethod = jwt.SigningMethodHS256
+
 type JwtManager struct {
 	config *config.Config
 }
@@ -29,13 +31,28 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-//this function genartes new tokens and store them in token pair struct
+//Parse checks the token and returns it and error
+func (j *JwtManager) Parse(token string) (*jwt.Token, error){
+	parser := jwt.NewParser()
+	jwtToken, err :=parser.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != siginingMethod {
+			return nil, fmt.Errorf("unexpected sigining method: %v", t.Header["alg"])
+		}
+		return []byte(j.config.JwtSecret), nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse the token: %v", err)
+	}
+	return jwtToken, nil
+}
+
+//GenerateTokenPair generates  new tokens and store them in token pair struct
 func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error){
 	now := time.Now()
 	issuer := "http://" + j.config.ApiServerHost + ":" + j.config.ApiServerPort
 
 	//geting key for access token
-	jwtAccessToken := jwt.NewWithClaims(jwt.SigningMethodES256, CustomClaims {
+	jwtAccessToken := jwt.NewWithClaims(siginingMethod, CustomClaims {
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject: userId.String(),
@@ -44,6 +61,7 @@ func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error){
 			IssuedAt: jwt.NewNumericDate(now),
 		},
 	})
+	
 	key := []byte(j.config.JwtSecret)
 	var err error
 	jwtAccessToken.Raw, err = jwtAccessToken.SignedString(key)
@@ -52,7 +70,7 @@ func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error){
 	}
 
 	//key for refresh token
-	jwtRefreshToken := jwt.NewWithClaims(jwt.SigningMethodES256, CustomClaims {
+	jwtRefreshToken := jwt.NewWithClaims(siginingMethod, CustomClaims {
 		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject: userId.String(),
