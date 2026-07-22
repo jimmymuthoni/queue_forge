@@ -9,21 +9,21 @@ import (
 	"github.com/jimmymuthoni/queue_forge/config"
 )
 
-var siginingMethod = jwt.SigningMethodHS256
+var signingMethod = jwt.SigningMethodHS256
 
 type JwtManager struct {
 	config *config.Config
 }
 
-//storing the tokens
 type TokenPair struct {
 	AccessToken  *jwt.Token
 	RefreshToken *jwt.Token
 }
 
-
 func NewJwtManager(config *config.Config) *JwtManager {
-	return &JwtManager{config}
+	return &JwtManager{
+		config: config,
+	}
 }
 
 type CustomClaims struct {
@@ -31,61 +31,84 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-//Parse checks the token and returns it and error
-func (j *JwtManager) Parse(token string) (*jwt.Token, error){
+// Parse verifies the JWT and returns it.
+func (j *JwtManager) Parse(tokenString string) (*jwt.Token, error) {
 	parser := jwt.NewParser()
-	jwtToken, err :=parser.Parse(token, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != siginingMethod {
-			return nil, fmt.Errorf("unexpected sigining method: %v", t.Header["alg"])
-		}
-		return []byte(j.config.JwtSecret), nil
-	})
+
+	token, err := parser.ParseWithClaims(
+		tokenString,
+		&CustomClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			if t.Method != signingMethod {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+
+			return []byte(j.config.JwtSecret), nil
+		},
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse the token: %v", err)
+		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
-	return jwtToken, nil
+
+	return token, nil
 }
 
-//GenerateTokenPair generates  new tokens and store them in token pair struct
-func (j *JwtManager) GenerateTokenPair(userId uuid.UUID) (*TokenPair, error){
-	now := time.Now()
-	issuer := "http://" + j.config.ApiServerHost + ":" + j.config.ApiServerPort
+// IsAccessToken returns true if the token is an access token.
+func (j *JwtManager) IsAccessToken(token *jwt.Token) bool {
+	claims, ok := token.Claims.(CustomClaims)
+	if !ok {
+		if c, ok := token.Claims.(*CustomClaims); ok {
+			return c.TokenType == "access"
+		}
+		return false
+	}
 
-	//geting key for access token
-	jwtAccessToken := jwt.NewWithClaims(siginingMethod, CustomClaims {
+	return claims.TokenType == "access"
+}
+
+// GenerateTokenPair creates a new access and refresh token.
+func (j *JwtManager) GenerateTokenPair(userID uuid.UUID) (*TokenPair, error) {
+	now := time.Now()
+
+	issuer := "http://" + j.config.ApiServerHost + ":" + j.config.ApiServerPort
+	key := []byte(j.config.JwtSecret)
+
+	// Access Token (15 minutes)
+	accessToken := jwt.NewWithClaims(signingMethod, CustomClaims{
 		TokenType: "access",
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject: userId.String(),
-			Issuer: issuer,
-			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour * 24 * 30)),
-			IssuedAt: jwt.NewNumericDate(now),
+			Subject:   userID.String(),
+			Issuer:    issuer,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
 		},
 	})
-	
-	key := []byte(j.config.JwtSecret)
+
 	var err error
-	jwtAccessToken.Raw, err = jwtAccessToken.SignedString(key)
+	accessToken.Raw, err = accessToken.SignedString(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign access token: %w", err)
 	}
 
-	//key for refresh token
-	jwtRefreshToken := jwt.NewWithClaims(siginingMethod, CustomClaims {
+	// Refresh Token (30 days)
+	refreshToken := jwt.NewWithClaims(signingMethod, CustomClaims{
 		TokenType: "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject: userId.String(),
-			Issuer: issuer,
-			ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute * 15)),
-			IssuedAt: jwt.NewNumericDate(now),
+			Subject:   userID.String(),
+			Issuer:    issuer,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(30 * 24 * time.Hour)),
 		},
 	})
 
-	jwtRefreshToken.Raw, err = jwtRefreshToken.SignedString(key)
+	refreshToken.Raw, err = refreshToken.SignedString(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign refresh token: %w", err)
 	}
+
 	return &TokenPair{
-		AccessToken: jwtAccessToken,
-		RefreshToken: jwtRefreshToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
