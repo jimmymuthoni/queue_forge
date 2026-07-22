@@ -70,3 +70,33 @@ func (s *ApiServer) signupHandler() http.HandlerFunc {
 		return nil
 	})
 }
+
+
+//payload that hold user info
+type SignInRequest struct {
+	Email		string `json:"email"`
+	Password	string `json:"password"`
+}
+
+//validating user info
+func (r SignInRequest) Validate() error {
+	if r.Email == "" {
+		return errors.New("email is required")
+	}
+	if r.Password == "" {
+		return errors.New("password is required")
+	}
+	return nil
+}
+
+//signinHadler sign in user and issue token
+func (s *ApiServer) signinHandler() http.HandlerFunc {
+	return handler(func(w http.ResponseWriter, r *http.Request) error {
+		req, err := decode[SignInRequest](r)
+		if err != nil {
+			return NewErrWithStatus(http.StatusBadRequest, err)
+		}
+
+
+	})
+}
