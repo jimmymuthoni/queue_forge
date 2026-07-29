@@ -14,16 +14,18 @@ import (
 )
 
 type ApiServer struct {
-	config *config.Config
-	logger *slog.Logger
-	store  *store.Store
+	config 		*config.Config
+	logger  	*slog.Logger
+	store    	*store.Store
+	jwtManager 	*JwtManager
 }
 
-func New(config *config.Config, logger *slog.Logger, store *store.Store) *ApiServer {
+func New(config *config.Config, logger *slog.Logger, store *store.Store, jwtManager *JwtManager) *ApiServer {
 	return &ApiServer{
 		config: config,
 		logger: logger,
 		store:  store,
+		jwtManager: jwtManager,
 	}
 }
 
