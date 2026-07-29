@@ -13,6 +13,13 @@ type SignUpRequest struct {
 	Password string	 `json:"password"`
 }
 
+
+//response for signinHandler
+type SigninResponse struct {
+	AccessToken 		string 	`json:"access_token"`
+	RefreshToken 	string  `json:"refresh_token"`
+}
+
 func (r SignUpRequest) Validate() error {
 	if r.Email == "" {
 		return errors.New("email is required")
@@ -108,11 +115,21 @@ func (s *ApiServer) signinHandler() http.HandlerFunc {
 			return NewErrWithStatus(http.StatusUnauthorized, err)
 		}
 
-		//using token to verified user
+		//giving token to verified user
 		tokenPair, err:= s.jwtManager.GenerateTokenPair(user.Id)
 		if err != nil {
 			return NewErrWithStatus(http.StatusInternalServerError, err)
 		}
 
+		if err := encode(APIResponse[SigninResponse]{
+			Data: &SigninResponse{
+				AccessToken: tokenPair.AccessToken.Raw,
+				RefreshToken: tokenPair.RefreshToken.Raw,
+			},
+		},http.StatusOK, w); err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
+		
+		return nil
 	})
 }
