@@ -97,6 +97,22 @@ func (s *ApiServer) signinHandler() http.HandlerFunc {
 			return NewErrWithStatus(http.StatusBadRequest, err)
 		}
 
+		//check if user exist and retrieve
+		user, err := s.store.Users.FindUserByEmail(r.Context(), req.Email)
+		if err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
+
+		//verify is password matches
+		if err := user.ComparePassword(req.Password); err != nil {
+			return NewErrWithStatus(http.StatusUnauthorized, err)
+		}
+
+		//using token to verified user
+		tokenPair, err:= s.jwtManager.GenerateTokenPair(user.Id)
+		if err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
 
 	})
 }
