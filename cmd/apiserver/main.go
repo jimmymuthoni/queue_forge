@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jimmymuthoni/queue_forge/apiserver"
 	"github.com/jimmymuthoni/queue_forge/config"
 	"github.com/jimmymuthoni/queue_forge/store"
@@ -34,10 +35,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
 	datastore := store.New(db)
-
-	server := apiserver.New(conf,logger, datastore)
-
+	jwtManager := apiserver.NewJwtManager(conf)
+	server := apiserver.New(conf,logger, datastore, jwtManager)
 	if err := server.Start(ctx); err != nil {
 		return err
 	}
