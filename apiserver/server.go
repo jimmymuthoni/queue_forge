@@ -40,6 +40,7 @@ func (s *ApiServer) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ping", s.ping)
 	mux.HandleFunc("POST /auth/signup", s.signupHandler())
+	mux.HandleFunc("POST /auth/signin", s.signupHandler())
 
 	server := &http.Server{
     Addr:    net.JoinHostPort(s.config.ApiServerHost, s.config.ApiServerPort),
