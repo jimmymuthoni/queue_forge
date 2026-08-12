@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-
 	"github.com/jimmymuthoni/queue_forge/config"
 	"github.com/jimmymuthoni/queue_forge/store"
 )
@@ -42,9 +41,12 @@ func (s *ApiServer) Start(ctx context.Context) error {
 	mux.HandleFunc("POST /auth/signup", s.signupHandler())
 	mux.HandleFunc("POST /auth/signin", s.signupHandler())
 
+	middleware := NewLoggerMiddleware(s.logger)
+	middleware = NewAuthMiddleware(s.jwtManager, s.store.Users)
+
 	server := &http.Server{
     Addr:    net.JoinHostPort(s.config.ApiServerHost, s.config.ApiServerPort),
-    Handler: mux,
+    Handler: middleware(mux),
 }
 
 	//goroutine to handle start logic of the server
