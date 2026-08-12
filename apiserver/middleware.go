@@ -1,11 +1,11 @@
 package apiserver
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/jimmymuthoni/queue_forge/store"
 )
@@ -20,15 +20,21 @@ func NewLoggerMiddleware(logger *slog.Logger) func(next http.Handler) http.Handl
 	}
 }
 
+type userCtxKey struct {}
+func ContextWithUser(ctx context.Context, user *store.User) context.Context {
+	return context.WithValue(ctx, userCtxKey{}, user)
+}
+
 // authentication middleware
 func NewAuthMiddleware(jwtManager *JwtManager, userStore *store.UserStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			
 			if strings.HasPrefix(r.URL.Path, "/auth"){
 				next.ServeHTTP(w, r)
 			}
 			//check auth headers
-			authHeader := r.Header.Get("/Authorization")
+			authHeader := r.Header.Get("Authorization")
 			var token string
 			if parts := strings.Split(authHeader, "Bearer"); len(parts) == 2 { 
 				token = parts[1]
@@ -72,7 +78,8 @@ func NewAuthMiddleware(jwtManager *JwtManager, userStore *store.UserStore) func(
 				return 
 			}
 
-			
+			next.ServeHTTP(w, r.WithContext(ContextWithUser(r.Context(),user)))
+
 		})
 	}
 }
