@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/jimmymuthoni/queue_forge/apiserver"
 	"github.com/jimmymuthoni/queue_forge/config"
 	"github.com/jimmymuthoni/queue_forge/store"
