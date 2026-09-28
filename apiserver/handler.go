@@ -5,12 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
+	"uuid"
 )
 
 
 type SignUpRequest struct {
 	Email    string  `json:"email"`
 	Password string	 `json:"password"`
+}
+
+
+type TokenRefreshResponse struct {
+	AccessToken 	string `json:"access_token"`
+	RefreshToken	string `json:"refresh_token"`
 }
 
 
@@ -141,5 +149,82 @@ func (s *ApiServer) signinHandler() http.HandlerFunc {
 		}
 		
 		return nil
+	})
+}
+
+type TokenRefreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+//validating the refresh token
+func (r TokenRefreshRequest) Validate() error {
+	if r.RefreshToken == " " {
+		return errors.New("refresh token iis required")
+	}
+	return nil
+}
+
+
+func tokenRefreshHandler(s *ApiServer) http.HandlerFunc {
+	return handler(func(w http.ResponseWriter, r *http.Request) error {
+		req, err := decode[TokenRefreshRequest](r)
+		if err != nil {
+			return NewErrWithStatus(http.StatusBadRequest, err)
+		}
+
+		currentRefreshToken, err := s.jwtManager.Parse(req.RefreshToken)
+		if err != nil {
+			return NewErrWithStatus(http.StatusUnauthorized, err)
+		}
+
+		userIdstr, err := currentRefreshToken.Claims.GetSubject()
+		if err != nil {
+			return NewErrWithStatus(http.StatusUnauthorized, err)
+		}
+
+		userId, err := uuid.Parse(userIdstr)
+		if err != nil {
+			return NewErrWithStatus(http.StatusUnauthorized, err)
+		}
+
+		currentRefreshTokenRecord, err := s.store.RefreshTokenStore.ByPrimaryKey(r.Context(), uuid.UUID(userId), currentRefreshToken)
+		if err != nil {
+			status := http.StatusInternalServerError
+			if errors.Is(err, sql.ErrNoRows){
+				status = http.StatusUnauthorized
+			}
+			return NewErrWithStatus(status, err)
+		}
+
+		if currentRefreshTokenRecord.ExpiresAt.Before(time.Now()){
+			return NewErrWithStatus(http.StatusUnauthorized, fmt.Errorf("refrsh token expired"))
+		}
+
+		tokenPair, err := s.jwtManager.GenerateTokenPair(userId)
+		if err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+
+		}
+
+		if _, err := s.store.RefreshTokenStore.DeleteUserTokens(r.Context(), uuid.UUID(userId)); err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+
+		}
+
+		if _, err := s.store.RefreshTokenStore.Create(r.Context(), userId, tokenPair.RefreshToken); err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
+
+		if err := encode(APIResponse[TokenRefreshResponse]{
+			Data: &TokenRefreshResponse{
+				AccessToken: tokenPair.AccessToken.Raw,
+				RefreshToken: tokenPair.AccessToken.Raw,
+			},
+		}, http.StatusOK, w); err != nil {
+			return NewErrWithStatus(http.StatusInternalServerError, err)
+		}
+		
+		return nil
+
 	})
 }
