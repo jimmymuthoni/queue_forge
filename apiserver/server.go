@@ -40,6 +40,7 @@ func (s *ApiServer) Start(ctx context.Context) error {
 	mux.HandleFunc("GET /ping", s.ping)
 	mux.HandleFunc("POST /auth/signup", s.signupHandler())
 	mux.HandleFunc("POST /auth/signin", s.signupHandler())
+	mux.HandleFunc("POST /auth/refresh", s.tokenRefreshHandler())
 
 	middleware := NewLoggerMiddleware(s.logger)
 	middleware = NewAuthMiddleware(s.jwtManager, s.store.Users)
